@@ -1,3 +1,4 @@
+
 def displacement_stub(nodes):
     '''
     displaces water between two nodes as follows:
@@ -20,3 +21,4 @@ def displacement_stub(nodes):
     displacement_quantity = abs(height1-height2)/2*(node1.get_stub_param()+node2.get_stub_param())/2        
     node_receiver.increase_height(displacement_quantity)
     node_releaser.decrease_height(displacement_quantity)
+    
