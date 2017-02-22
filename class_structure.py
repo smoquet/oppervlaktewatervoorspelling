@@ -33,9 +33,24 @@ class Edge(object):
         self.water_volume = water_volume 
         self.stub_param =  float(stub_param)
         self.nodes = []
-        self.height_volume_ratio = 1
+        self.height_volume_ratio = 1.0
         self.height = self.height_volume_ratio*self.water_volume
         self.water_volume_passage = 0
+        
+        self.manning_coefficient = 0.013
+        self.slope = 0.05
+        self.length = 10 
+        self.talus = 0.5 #talud 1 meter omlaag is 2 meter opzij
+        self.bottom_width = 5.0 #bodem breedte
+        self.bottom_level = 1.0 #bodem niveau
+        self.water_depth = self.height-self.bottom_level
+        self.water_surface_width = self.bottom_width+2.0*(self.water_depth*self.talus)
+        self.wetted_perimeter = self.bottom_width + 2.0*(((self.water_surface_width-self.bottom_width)/2.0)**2.0 + self.water_depth**2.0)**0.5
+        self.cross_sectional_area_of_flow = self.water_depth*(self.bottom_width+self.water_surface_width)/2.0
+        self.hydrolic_radius = self.cross_sectional_area_of_flow/self.wetted_perimeter
+        self.velocity = (1/self.manning_coefficient)*self.hydrolic_radius**(2/3)*self.slope**(1/2)
+        self.discharge = self.velocity*self.cross_sectional_area_of_flow
+        
     def __str__(self):
         return 'Edge ' +self.name +' ' + str([node.__str__() for node in self.nodes])
     def get_name(self):
@@ -130,13 +145,13 @@ class Graph(object):
 def test_polder_simple():
       
     # test displacement between four edges and three end points
-    e1 = Edge(name = '1', water_volume= 500, stub_param = 1)
-    e2 = Edge(name = '2', water_volume= 500, stub_param = 1)
-    e3 = Edge(name = '3', water_volume= 500, stub_param = 1)
-    e4 = Edge(name = '4', water_volume= 500, stub_param = 1)
+    e1 = Edge(name = '1', water_volume= 10, stub_param = 1)
+    e2 = Edge(name = '2', water_volume= 10, stub_param = 1)
+    e3 = Edge(name = '3', water_volume= 10, stub_param = 1)
+    e4 = Edge(name = '4', water_volume= 10, stub_param = 1)
     end_node1 = EndNode(edge=e1,discharge=2)
-    end_node_UF3 = EndNodeWithUnknownFlow(edge=e3,threshold=500)
-    end_node_UF4 = EndNodeWithUnknownFlow(edge=e4,threshold=500)
+    end_node_UF3 = EndNodeWithUnknownFlow(edge=e3,threshold=10)
+    end_node_UF4 = EndNodeWithUnknownFlow(edge=e4,threshold=10)
     n12 = Node(e1,e2,e4)
     n23 = Node(e2,e3)
     e1.add_node(end_node1)
@@ -154,7 +169,7 @@ def test_polder_simple():
     
     polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
     polder.set_node_sequence(end_node1)
-    for i in range(800):
+    for i in range(80):
         polder.perform_exterior_flow()
 #         print [[edge.get_name(),edge.get_water_volume(), edge.get_water_volume_passage()] for edge in polder.get_edges()]
         polder.displace_water_between_nodes()
