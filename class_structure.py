@@ -7,6 +7,7 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
     initPath = [start_node]
     q.append(initPath)
     order_of_bfs_iteration = []
+    endnodes_unknown_flow = []
     while len(q) != 0:
         tmpPath = q.pop(0)
         lastNode = tmpPath[len(tmpPath) - 1]
@@ -16,31 +17,42 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
                 newPath = tmpPath + [linkNode]
                 q.append(newPath)
                 latest_node = newPath[-1]
+                if type(latest_node) == EndNodeWithUnknownFlow:
+                    endnodes_unknown_flow.append(latest_node)
                 if type(latest_node) == Node: 
                     order_of_bfs_iteration.append(latest_node)
-#     print order_of_bfs_iteration
-    return order_of_bfs_iteration
+    return order_of_bfs_iteration+endnodes_unknown_flow
 
 class Edge(object):
     '''
     represents an object in the stroomgebied
     expects a name, and height of water as flaot
     '''
-    def __init__(self, name, height, stub_param):
+    def __init__(self, name, water_volume, stub_param):
         self.name = str(name)
-        self.height = float(height)
+        self.water_volume = water_volume 
         self.stub_param =  float(stub_param)
         self.nodes = []
+        self.height_volume_ratio = 1
+        self.height = self.height_volume_ratio*self.water_volume
+        self.water_volume_passage = 0
     def __str__(self):
         return 'Edge ' +self.name +' ' + str([node.__str__() for node in self.nodes])
     def get_name(self):
         return self.name
     def get_height(self):
         return self.height
-    def set_height(self, height):
-        self.height = float(height)
-    def adjust_height(self, amount):
-        self.height+=float(amount)
+    def adjust_height_to_water_volume(self):
+        self.height = self.height_volume_ratio*self.water_volume
+    def get_water_volume(self):
+        return self.water_volume
+    def get_height_volume_ratio(self):
+        return self.height_volume_ratio
+    def adjust_water_volume(self, volume):
+        self.water_volume += volume
+        self.adjust_height_to_water_volume()
+        if volume <0:
+            self.water_volume_passage=volume
     def add_node(self,*args):
         for a in args:
             self.nodes.append(a)
@@ -50,6 +62,13 @@ class Edge(object):
                 return n
     def get_stub_param(self):
         return self.stub_param
+    def get_water_volume_passage(self):
+        return self.water_volume_passage
+
+
+#     def adjust_height(self, amount):
+#         self.height+=float(amount)
+
 
 class Node(object):
     def __init__(self, *args):
@@ -69,9 +88,20 @@ class EndNode(Node):
     def __init__(self, edge, discharge):
         self.edges = [edge]
         self.discharge = float(discharge)
-    def adjust_water_height(self):
-        self.edges[0].adjust_height(self.discharge)
+    def add_or_reduce_water(self):
+        self.edges[0].adjust_water_volume(self.discharge)
 
+class EndNodeWithUnknownFlow(Node):
+    def __init__(self, edge, threshold):
+        self.edges = [edge]
+        self.threshold = threshold
+    def get_threshold(self):
+        return self.threshold
+    def displace_water(self):
+        helpers.edge_flow_stub(self)
+    
+        
+        
 class Graph(object):
     def __init__(self, name, edges, endnodes, nodes):
         self.name = name
@@ -91,74 +121,22 @@ class Graph(object):
         self.nodes = get_BFS_iteration_sequence_of_nodes(start_node)
     def perform_exterior_flow(self):
         for en in self.endnodes:
-            en.adjust_water_height()
+            en.add_or_reduce_water()
     def displace_water_between_nodes(self):
         for n in self.nodes:
             n.displace_water()
         
-        
-        
-def test_polder_loop():
-    e1 = Edge(name = '1', height = 500, stub_param = 0.5)
-    e2 = Edge(name = '2', height = 500, stub_param = 0.6)
-    e3 = Edge(name = '3', height = 500, stub_param = 0.4)
-    e4 = Edge(name = '4', height = 500, stub_param = 0.4)
-    e5 = Edge(name = '5', height = 500, stub_param = 0.5)
-    e6 = Edge(name = '6', height = 500, stub_param = 0.6)
-    e7 = Edge(name = '7', height = 500, stub_param = 0.4)
-    e8 = Edge(name = '8', height = 500, stub_param = 0.4)
-    e9 = Edge(name = '9', height = 500, stub_param = 0.5)
-    e10 = Edge(name = '10', height = 500, stub_param = 0.6)
-    e11 = Edge(name = '11', height = 500, stub_param = 0.4)
-    e12 = Edge(name = '12', height = 500, stub_param = 0.4)
-    end_node1 = EndNode(edge=e1,discharge=2)
-    end_node6 = EndNode(edge=e6,discharge=-1)
-    end_node12 = EndNode(edge=e12,discharge=-1)
-    n1d2d7 = Node(e1,e2,e7)
-    n2d3 = Node(e2,e3)
-    n3d4 = Node(e3,e4)
-    n4d5 = Node(e4,e5)
-    n5d6d11 = Node(e5,e6,e11)
-    n7d8 = Node(e7,e8)
-    n8d9d12 = Node(e8,e9,e12)
-    n9d10 = Node(e9,e10)
-    n10d11 = Node(e10,e11)
-    
-    e1.add_node(end_node1, n1d2d7)
-    e2.add_node(n1d2d7,n2d3)
-    e3.add_node(n2d3,n3d4)
-    e4.add_node(n3d4,n4d5)
-    e5.add_node(n4d5,n5d6d11)            
-    e6.add_node(n5d6d11,end_node6)
-    e7.add_node(n1d2d7,n7d8)
-    e8.add_node(n7d8,n8d9d12)
-    e9.add_node(n8d9d12,n9d10)
-    e10.add_node(n9d10,n10d11)
-    e11.add_node(n10d11,n5d6d11)
-    e12.add_node(end_node12,n8d9d12)
-    
-    edges = [e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11,e12]
-    endnodes = [end_node1, end_node6, end_node12] 
-    nodes = [n1d2d7,n2d3,n3d4,n4d5,n5d6d11,n7d8,n8d9d12,n9d10,n10d11] 
-    
-    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
-    polder.set_node_sequence(end_node1)
-    for i in range(30):
-        polder.perform_exterior_flow()
-        polder.displace_water_between_nodes()
-        print [[edge.get_name(),edge.get_height()] for edge in polder.get_edges()]
-
-    
+   
 def test_polder_simple():
       
     # test displacement between four edges and three end points
-    e1 = Edge(name = '1', height = 500, stub_param = 0.5)
-    e2 = Edge(name = '2', height = 500, stub_param = 0.6)
-    e3 = Edge(name = '3', height = 500, stub_param = 0.4)
-    e4 = Edge(name = '4', height = 500, stub_param = 0.4)
+    e1 = Edge(name = '1', water_volume= 500, stub_param = 1)
+    e2 = Edge(name = '2', water_volume= 500, stub_param = 1)
+    e3 = Edge(name = '3', water_volume= 500, stub_param = 1)
+    e4 = Edge(name = '4', water_volume= 500, stub_param = 1)
     end_node1 = EndNode(edge=e1,discharge=2)
-    end_node3 = EndNode(edge=e3,discharge=-1.3)
-    end_node4 = EndNode(edge=e4,discharge=-0.7)
+    end_node_UF3 = EndNodeWithUnknownFlow(edge=e3,threshold=500)
+    end_node_UF4 = EndNodeWithUnknownFlow(edge=e4,threshold=500)
     n12 = Node(e1,e2,e4)
     n23 = Node(e2,e3)
     e1.add_node(end_node1)
@@ -166,20 +144,21 @@ def test_polder_simple():
     e2.add_node(n12)
     e2.add_node(n23)
     e3.add_node(n23)
-    e3.add_node(end_node3)
+    e3.add_node(end_node_UF3)
     e4.add_node(n12)
-    e4.add_node(end_node4) 
+    e4.add_node(end_node_UF4) 
         
     edges = [e1,e2,e3,e4]
-    endnodes = [end_node1, end_node3, end_node4]
-    nodes = [n12,n23]
+    endnodes = [end_node1] 
+    nodes = [n12,n23, end_node_UF3, end_node_UF4]
     
     polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
     polder.set_node_sequence(end_node1)
-    for i in range(80):
+    for i in range(800):
         polder.perform_exterior_flow()
+#         print [[edge.get_name(),edge.get_water_volume(), edge.get_water_volume_passage()] for edge in polder.get_edges()]
         polder.displace_water_between_nodes()
-    print [[edge.get_name(),edge.get_height()] for edge in polder.get_edges()]
+        print [[edge.get_name(),edge.get_water_volume(), edge.get_water_volume_passage()] for edge in polder.get_edges()]
 
 test_polder_simple()
         
