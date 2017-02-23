@@ -27,7 +27,7 @@ def edge_flow_stub(end_node_unknown_flow):
     displacement_quantity = 0
     height_difference = 0
     edge = end_node_unknown_flow.get_edges()[0]
-    edge_height=edge.get_height()
+    edge_height=edge.get_water_level()
     edge_volume_height_ratio = edge.get_height_volume_ratio()
     threshold = end_node_unknown_flow.get_threshold()
 

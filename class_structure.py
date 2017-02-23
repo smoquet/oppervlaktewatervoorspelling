@@ -34,7 +34,7 @@ class Edge(object):
         self.stub_param =  float(stub_param)
         self.nodes = []
         self.height_volume_ratio = 1.0
-        self.height = self.height_volume_ratio*self.water_volume
+        self.water_level = self.height_volume_ratio*self.water_volume
         self.water_volume_passage = 0.0
         
         self.manning_coefficient = 0.013
@@ -43,7 +43,7 @@ class Edge(object):
         self.talus = 0.5 #talud 1 meter omlaag is 0.5 meter opzij
         self.bottom_width = 5.0 #bodem breedte
         self.bottom_level = 1.0 #bodem niveau
-        self.water_depth = self.height-self.bottom_level
+        self.water_depth = self.water_level-self.bottom_level
         self.water_surface_width = self.bottom_width+2.0*(self.water_depth*self.talus)
         self.wetted_perimeter = self.bottom_width + 2.0*(((self.water_surface_width-self.bottom_width)/2.0)**2.0 + self.water_depth**2.0)**0.5
         self.cross_sectional_area_of_flow = self.water_depth*(self.bottom_width+self.water_surface_width)/2.0
@@ -55,10 +55,10 @@ class Edge(object):
         return 'Edge ' +self.name +' ' + str([node.__str__() for node in self.nodes])
     def get_name(self):
         return self.name
-    def get_height(self):
-        return self.height
+    def get_water_level(self):
+        return self.water_level
     def adjust_height_to_water_volume(self):
-        self.height = self.height_volume_ratio*self.water_volume
+        self.water_level = self.height_volume_ratio*self.water_volume
     def get_water_volume(self):
         return self.water_volume
     def get_height_volume_ratio(self):
@@ -81,15 +81,12 @@ class Edge(object):
         return self.water_volume_passage
 
 
-#     def adjust_height(self, amount):
-#         self.height+=float(amount)
-
 
 class Node(object):
     def __init__(self, *args):
         self.edges = (args)
     def __str__(self):
-        return "Node " + str([(e.name, e.height, e.stub_param) for e in self.edges])
+        return "Node " + str([(e.name, e.water_level, e.stub_param) for e in self.edges])
     def get_edges(self):
         return self.edges
     def get_connected_nodes(self):
