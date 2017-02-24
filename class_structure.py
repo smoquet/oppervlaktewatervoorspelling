@@ -21,9 +21,11 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
                 q.append(newPath)
                 latest_node = newPath[-1]
                 if type(latest_node) == EndNodeWithUnknownFlow:
-                    endnodes_unknown_flow.append(latest_node)
+                    if latest_node not in endnodes_unknown_flow: 
+                        endnodes_unknown_flow.append(latest_node)
                 if type(latest_node) == Node: 
-                    order_of_bfs_iteration.append(latest_node)
+                    if latest_node not in order_of_bfs_iteration:
+                        order_of_bfs_iteration.append(latest_node)
     return order_of_bfs_iteration+endnodes_unknown_flow
 
 class Edge(object):
@@ -31,12 +33,12 @@ class Edge(object):
     '''
     
     
-    def __init__(self, name, water_volume, stub_param):
+    def __init__(self, name, water_volume):
         # params set on init
         self.name = str(name)
         self.water_volume = water_volume 
-        self.stub_param =  float(stub_param)
         self.nodes = []
+        self.water_direction = None
         
         # params to be set on init eventually
         self.manning_coefficient = 0.013
@@ -83,7 +85,12 @@ class Edge(object):
         self.wetted_perimeter = self.bottom_width + 2.0*(((self.water_surface_width-self.bottom_width)/2.0)**2.0 + self.water_depth**2.0)**0.5
         self.cross_sectional_area_of_flow = self.water_depth*(self.bottom_width+self.water_surface_width)/2.0
         self.hydraulic_radius = self.cross_sectional_area_of_flow/self.wetted_perimeter
-        
+    
+    def update_water_direction(self, node):
+        self.water_direction = node
+    
+    def get_water_direction(self):
+        return self.water_direction
     
     def calculate_set_and_return_slope_and_calculate_discharge(self, water_level_at_end_of_edge):
         water_level_difference_between_middle_and_end = self.water_level-water_level_at_end_of_edge
@@ -91,7 +98,7 @@ class Edge(object):
         try:
             self.velocity = 1/self.manning_coefficient*self.hydraulic_radius**(2.0/3.0)*self.slope**(1.0/2.0)
         except ValueError:
-            raise ValueError('Hydraulic Radius is negative, this is impossible')
+            raise ValueError('Hydraulic Radius is negative, system has dried out somewhere')
         self.discharge = self.velocity*self.cross_sectional_area_of_flow
         return self.slope
     
@@ -134,10 +141,13 @@ class Node(object):
 
     
     def __init__(self, *args):
-        self.edges = (args)
-    
+        self.edges = args
+        self.name = 'Node '
+        for e in self.edges:
+            self.name += '-'+(e.name)
+        
     def __str__(self):
-        return "Node " + str([(e.name, e.water_level, e.stub_param) for e in self.edges])
+        return self.name
     
     def get_edges(self):
         return self.edges
@@ -148,7 +158,7 @@ class Node(object):
     
     def displace_water(self):
         '''displaces a Q between all connected nodes according to mannings formula'''
-        helpers.displace_water_between_edges(self.edges)
+        helpers.displace_water_between_edges(self)
 
 
 class EndNode(Node):
@@ -157,6 +167,7 @@ class EndNode(Node):
     def __init__(self, edge, discharge):
         self.edges = [edge]
         self.discharge = float(discharge)
+        self.name = 'Endnode'+self.edges[0].name
         
     def add_or_reduce_water(self):
         self.edges[0].adjust_water_volume(self.discharge)
@@ -194,6 +205,9 @@ class Graph(object):
     def get_edges(self):
         return self.edges
     
+    def get_node_sequence(self):
+        return [node.name for node in self.nodes]
+    
     def add_node(self, node):
         self.nodes.append(node)
     
@@ -210,50 +224,47 @@ class Graph(object):
     def displace_water_between_edges(self):
         for n in self.nodes:
             n.displace_water()
-        
-   
-def test_polder_simple():
-    # test displacement between four edges and three end points
-    e1 = Edge(name = '1', water_volume= 2, stub_param = 0.05)
-    e2 = Edge(name = '2', water_volume= 2, stub_param = 0.05)
-    e3 = Edge(name = '3', water_volume= 2, stub_param = 0.05)
-    e4 = Edge(name = '4', water_volume= 2, stub_param = 0.05)
-    end_node1 = EndNode(edge=e1,discharge=2)
-    end_node_UF3 = EndNodeWithUnknownFlow(edge=e3,threshold=4, water_level=0, qh_relationship=helpers.qh_relationship_end_node_unknown_flow_1)
-    end_node_UF4 = EndNodeWithUnknownFlow(edge=e4,threshold=4, water_level=0, qh_relationship=helpers.qh_relationship_end_node_unknown_flow_1)
-    n12 = Node(e1,e2,e4)
-    n23 = Node(e2,e3)
-    e1.add_node(end_node1)
-    e1.add_node(n12)
-    e2.add_node(n12)
-    e2.add_node(n23)
-    e3.add_node(n23)
-    e3.add_node(end_node_UF3)
-    e4.add_node(n12)
-    e4.add_node(end_node_UF4) 
-        
-    edges = [e1,e2,e3,e4]
-    endnodes = [end_node1] 
-    nodes = [n12,n23, end_node_UF3, end_node_UF4]
-    
-    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
-    polder.set_node_sequence(end_node1)
-    for i in range(10):
-        polder.perform_exterior_flow()
-#         print [[edge.get_name(),edge.get_water_volume(), edge.get_volume_of_water_passage()] for edge in polder.get_edges()]
-        polder.displace_water_between_edges()
-        print 'iteration nr: ',i,"    ",[[edge.get_name(),edge.get_water_volume(), edge.get_volume_of_water_passage()] for edge in polder.get_edges()]
 
-# test_polder_simple()
+# TESTS
+
         
-        
+def add_nodes_to_edges(nodes):
+    for node in nodes:
+        for edge in node.get_edges():
+            edge.add_node(node)
+def total_water_in_system(polder):
+    total_water = 0
+    for edge in polder.get_edges():
+        total_water+=edge.get_water_volume()
+    return total_water
+
+def run_polder(polder, start_node, iterations, print_each_iter=False):
+    polder.set_node_sequence(start_node)
+    print polder.get_node_sequence()
+    total_water_at_start = total_water_in_system(polder)
+    
+    for i in range(iterations):
+        total_water_displacement = 0
+        print '\n'
+        polder.perform_exterior_flow()
+    #         print [[edge.get_name(),edge.get_water_volume(), edge.get_volume_of_water_passage()] for edge in polder.get_edges()]
+        polder.displace_water_between_edges()
+        if print_each_iter:
+            for edge in polder.get_edges():
+                total_water_displacement+=edge.get_volume_of_water_passage()
+                print 'iteration nr:',i,[edge.get_name(),'Vol',edge.get_water_volume(), 'Slope', edge.get_slope(), 'Q-calc', edge.get_discharge_Q(),'Q_real', edge.get_volume_of_water_passage(), 'dir:',str(edge.get_water_direction())]
+            print total_water_displacement/len(polder.get_edges())
+
+    for edge in polder.get_edges():
+        print 'iteration nr:',i,[edge.get_name(),'Vol',edge.get_water_volume(), 'Slope', edge.get_slope(), 'Q-calc', edge.get_discharge_Q(),'Q_real', edge.get_volume_of_water_passage(), 'dir:',str(edge.get_water_direction())]
+    print 'water_difference = ' ,total_water_at_start-total_water_in_system(polder)
         
 def test_polder_2gemaal_3sloot():
-    e1 = Edge(name = '1', water_volume= 600.0, stub_param = 0.05)
-    e2 = Edge(name = '2', water_volume= 600.0, stub_param = 0.05)
-    e3 = Edge(name = '3', water_volume= 600.0, stub_param = 0.05)
-    end_node1 = EndNode(edge=e1,discharge=2.0)
-    end_node3 = EndNode(edge=e3,discharge=-2.0)    
+    e1 = Edge(name = '1', water_volume= 600.0)
+    e2 = Edge(name = '2', water_volume= 400.0)
+    e3 = Edge(name = '3', water_volume= 600.0)
+    end_node1 = EndNode(edge=e1,discharge=0)
+    end_node3 = EndNode(edge=e3,discharge=0)    
     n12 = Node(e1,e2)
     n23 = Node(e2,e3)
     e1.add_node(end_node1)
@@ -268,12 +279,61 @@ def test_polder_2gemaal_3sloot():
     nodes = [n12,n23]
     
     polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
-    polder.set_node_sequence(end_node1)
-    for i in range(100):
-        polder.perform_exterior_flow()
-#         print [[edge.get_name(),edge.get_water_volume(), edge.get_volume_of_water_passage()] for edge in polder.get_edges()]
-        polder.displace_water_between_edges()
-        print 'iteration nr: ',i,"    ",[[edge.get_name(),'Vol',edge.get_water_volume(), 'Slope', edge.get_slope(), 'Q_real', edge.get_volume_of_water_passage()] for edge in polder.get_edges()]
-
-test_polder_2gemaal_3sloot()
+    run_polder(polder, end_node1, 10, print_each_iter=True)
     
+# test_polder_2gemaal_3sloot()
+
+def test_polder_5gemaal_10sloot():
+    e1 = Edge(name = '1', water_volume= 600.0)
+    e2 = Edge(name = '2', water_volume= 600.0)
+    e3 = Edge(name = '3', water_volume= 600.0)
+    e4 = Edge(name = '4', water_volume= 600.0)
+    e5 = Edge(name = '5', water_volume= 600.0)
+    e6 = Edge(name = '6', water_volume= 600.0)
+    e7 = Edge(name = '7', water_volume= 600.0)
+    e8 = Edge(name = '8', water_volume= 600.0)
+    e9 = Edge(name = '9', water_volume= 600.0)
+    e10 = Edge(name = '10', water_volume= 600.0)
+    e11 = Edge(name = '11', water_volume= 600.0)
+    end_node1 = EndNode(edge=e1,discharge=-30.0)
+    end_node2 = EndNode(edge=e2,discharge=-30.0)    
+    end_node6 = EndNode(edge=e6,discharge=20.0)
+    end_node7 = EndNode(edge=e7,discharge=20.0)    
+    end_node11 = EndNode(edge=e11,discharge=20.0)
+    n1d2d3 =    Node(e1,e2,e3)
+    n3d4d5d6 =  Node(e3,e4,e5,e6)
+    n4d7d8 =    Node(e4,e7,e8)
+    n5d9 =      Node(e5,e9)
+    n8d10 =     Node(e8,e10)
+    n9d10d11 =  Node(e9,e10,e11)
+    
+    edges = [e1,e2,e3,e4,e5,e6,e7,e8,e9,e10,e11]
+    endnodes = [end_node1,end_node2,end_node6,end_node7,end_node11]
+    nodes = [n1d2d3,n3d4d5d6,n4d7d8,n5d9,n8d10,n9d10d11]
+    add_nodes_to_edges(nodes+endnodes)
+    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
+    run_polder(polder, end_node1, 150, print_each_iter=True)
+
+test_polder_5gemaal_10sloot()
+
+def test_polder_cirkel():
+    e1 = Edge(name = '1', water_volume= 600.0)
+    e2 = Edge(name = '2', water_volume= 600.0)
+    e3 = Edge(name = '3', water_volume= 600.0)
+    e4 = Edge(name = '4', water_volume= 600.0)
+    e5 = Edge(name = '5', water_volume= 600.0)
+    end_node1 = EndNode(edge=e1,discharge=-20)
+    end_node5 = EndNode(edge=e5,discharge=20)    
+    n1d2d3 =    Node(e1,e2,e3)
+    n2d4 =  Node(e2,e4)
+    n3d4d5 =    Node(e3,e4,e5)
+    
+    edges = [e1,e2,e3,e4,e5]
+    endnodes = [end_node1,end_node5]
+    nodes = [n1d2d3,n2d4,n3d4d5]
+    add_nodes_to_edges(nodes+endnodes)
+    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
+    run_polder(polder, end_node5, 50, print_each_iter=True)
+
+    
+# test_polder_cirkel()

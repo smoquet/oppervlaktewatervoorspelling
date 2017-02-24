@@ -1,7 +1,7 @@
 def edge_water_level_is_lower(edge, water_level):
     return edge.get_water_level() < water_level
 
-def displace_water_between_edges(edges):
+def displace_water_between_edges(node):
     '''expects: edges that are connected with each other
     1: get average_water_level from edges
     2: set slopes of edges according to this average height, their heights and lengths
@@ -9,6 +9,7 @@ def displace_water_between_edges(edges):
     4: give the Q to the net receiving edges on the ratio of their respective slopes (the most sloped ones get more)
     returns nothing 
     '''
+    edges = node.get_edges()
     average_water_level = 0.0
 #     edges_dict = {}
     water_receiving_edges = []
@@ -25,10 +26,12 @@ def displace_water_between_edges(edges):
         if slope == 0.0:
             water_receiving_edges.append([edge, 0]) 
         elif not edge_water_level_is_lower(edge, average_water_level): # giver of water
+            edge.update_water_direction(node) 
             water_displacement_quantity = edge.get_discharge_Q()
             total_Q_to_give_to_receiving_edges +=water_displacement_quantity 
             edge.adjust_water_volume(-1*abs(water_displacement_quantity))
-        elif edge_water_level_is_lower(edge, average_water_level): # receiver of wter
+        elif edge_water_level_is_lower(edge, average_water_level): # receiver of water
+            edge.update_water_direction(edge.get_other_node(node))
             edge_water_level = edge.get_water_level()
             difference_in_water_level = average_water_level-edge_water_level
             added_lower_water_levels += difference_in_water_level
