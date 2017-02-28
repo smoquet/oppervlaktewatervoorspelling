@@ -10,30 +10,31 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
     initPath = [start_node]
     q.append(initPath)
     order_of_bfs_iteration = []
-    endnodes_unknown_flow = []
+#     endnodes_unknown_flow = []
     while len(q) != 0:
         tmpPath = q.pop(0)
         lastNode = tmpPath[len(tmpPath) - 1]
 #         print 'Current dequeued path:', tmpPath
         for linkNode in lastNode.get_connected_nodes():
-            if linkNode not in tmpPath:
+            if linkNode != None and linkNode not in tmpPath:
                 newPath = tmpPath + [linkNode]
                 q.append(newPath)
                 latest_node = newPath[-1]
-                if type(latest_node) == EndNodeWithUnknownFlow:
-                    if latest_node not in endnodes_unknown_flow: 
-                        endnodes_unknown_flow.append(latest_node)
+#                 if type(latest_node) == EndNodeWithUnknownFlow:
+#                     if latest_node not in endnodes_unknown_flow: 
+#                         endnodes_unknown_flow.append(latest_node)
                 if type(latest_node) == Node: 
                     if latest_node not in order_of_bfs_iteration:
                         order_of_bfs_iteration.append(latest_node)
-    return order_of_bfs_iteration+endnodes_unknown_flow
+    return order_of_bfs_iteration
+#     return order_of_bfs_iteration+endnodes_unknown_flow
 
 class Edge(object):
     '''represents an object in the stroomgebied
     '''
     
     
-    def __init__(self, name, water_volume):
+    def __init__(self, name, water_volume, manning_coefficient = 0.013, bottom_level=1.0):
         # params set on init
         self.name = str(name)
         self.water_volume = water_volume 
@@ -41,11 +42,11 @@ class Edge(object):
         self.water_direction = None
         
         # params to be set on init eventually
-        self.manning_coefficient = 0.013
+        self.manning_coefficient = manning_coefficient
         self.length = 100.0 
-        self.talus = 0.0 #talud 1 meter omlaag is 0.5 meter opzij
+        self.talus = 0.0 # 0.5 = talud 1 meter omlaag is 0.5 meter opzij
         self.bottom_width = 5.0 #bodem breedte
-        self.bottom_level = 1.0 #bodem niveau
+        self.bottom_level = bottom_level #bodem niveau
         
         # params to calculate on initialisation
         self.water_depth_to_volume_ratio = 1/(self.bottom_width*self.length)
@@ -136,6 +137,10 @@ class Edge(object):
         return self.volume_of_water_passage
 
 
+class EndEdge(Edge):
+    def adjust_water_volume(self, volume):
+        pass
+    
 
 class Node(object):
 
@@ -173,20 +178,21 @@ class EndNode(Node):
         self.edges[0].adjust_water_volume(self.discharge)
 
 
-class EndNodeWithUnknownFlow(Node):
-    
-    
-    def __init__(self, edge, threshold, water_level, qh_relationship):
-        self.edges = [edge]
-        self.threshold = threshold # absolute value, not relative to bottom of waterway
-        self.water_level = water_level
-        self.qh_relationship = qh_relationship
-        
-    def get_threshold(self):
-        return self.threshold
-    
-    def displace_water(self):
-        helpers.edge_flow_stub(self)
+
+# class EndNodeWithUnknownFlow(Node):
+#     
+#     
+#     def __init__(self, edge, threshold, water_level, qh_relationship):
+#         self.edges = [edge]
+#         self.threshold = threshold # absolute value, not relative to bottom of waterway
+#         self.water_level = water_level
+#         self.qh_relationship = qh_relationship
+#         
+#     def get_threshold(self):
+#         return self.threshold
+#     
+#     def displace_water(self):
+#         helpers.edge_flow_stub(self)
     
         
 class Graph(object):
@@ -295,10 +301,10 @@ def test_polder_5gemaal_10sloot():
     e9 = Edge(name = '9', water_volume= 600.0)
     e10 = Edge(name = '10', water_volume= 600.0)
     e11 = Edge(name = '11', water_volume= 600.0)
-    end_node1 = EndNode(edge=e1,discharge=-30.0)
+    end_node1 = EndNode(edge=e1,discharge=-10.0)
     end_node2 = EndNode(edge=e2,discharge=-30.0)    
     end_node6 = EndNode(edge=e6,discharge=20.0)
-    end_node7 = EndNode(edge=e7,discharge=20.0)    
+    end_node7 = EndNode(edge=e7,discharge=0.0)    
     end_node11 = EndNode(edge=e11,discharge=20.0)
     n1d2d3 =    Node(e1,e2,e3)
     n3d4d5d6 =  Node(e3,e4,e5,e6)
@@ -312,7 +318,7 @@ def test_polder_5gemaal_10sloot():
     nodes = [n1d2d3,n3d4d5d6,n4d7d8,n5d9,n8d10,n9d10d11]
     add_nodes_to_edges(nodes+endnodes)
     polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
-    run_polder(polder, end_node1, 150, print_each_iter=True)
+    run_polder(polder, end_node1, 450, print_each_iter=True)
 
 test_polder_5gemaal_10sloot()
 
@@ -334,6 +340,61 @@ def test_polder_cirkel():
     add_nodes_to_edges(nodes+endnodes)
     polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
     run_polder(polder, end_node5, 50, print_each_iter=True)
-
     
 # test_polder_cirkel()
+
+def test_polder_2gemaal_4sloot():
+    e1 = Edge(name = '1', water_volume= 600.0)
+    e2 = Edge(name = '2', water_volume= 600.0)
+    e3 = Edge(name = '3', water_volume= 600.0, manning_coefficient=0.075)
+    e4 = Edge(name = '4', water_volume= 600.0)
+    
+    end_node1 = EndNode(edge=e1,discharge=20)
+    end_node4 = EndNode(edge=e4,discharge=-20)    
+    n1d2d3 =    Node(e1,e2,e3)
+    n2d3d4 =  Node(e2,e3,e4)
+    
+    edges = [e1,e2,e3,e4]
+    endnodes = [end_node1,end_node4]
+    nodes = [n1d2d3,n2d3d4]
+    add_nodes_to_edges(nodes+endnodes)
+    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
+    run_polder(polder, end_node1, 300, print_each_iter=True)
+
+# test_polder_2gemaal_4sloot()
+
+def test_polder_1gemaal_2sloot_water_drempel_check():
+    e1 = Edge(name = '1', water_volume= 3.0 )
+    e2 = Edge(name = '2', water_volume= 1.0, bottom_level=5.0)
+    
+    end_node1 = EndNode(edge=e1,discharge=50)
+    end_node2 = EndNode(edge=e2,discharge=0)
+    n1d2 =    Node(e1,e2)
+    edges = [e1,e2]
+    endnodes = [end_node1, end_node2]
+    nodes = [n1d2]
+    add_nodes_to_edges(nodes+endnodes)
+    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
+    run_polder(polder, end_node1, 45, print_each_iter=True)
+    
+# test_polder_1gemaal_2sloot_water_drempel_check()
+
+def test_EndEdge_sloot():
+    e1 = Edge(name = '1', water_volume= 600.0)
+    e2 = Edge(name = '2', water_volume= 600.0)
+    end_edge3 = EndEdge(name = 'end3', water_volume=600.0)
+    
+    end_node1 = EndNode(edge=e1,discharge=20)
+    
+    n1d2 =    Node(e1,e2)
+    n2end3 =    Node(e2,end_edge3)
+    
+    edges = [e1,e2, end_edge3]
+    endnodes = [end_node1]
+    nodes = [n1d2, n2end3]
+    
+    add_nodes_to_edges(nodes+endnodes)
+    polder = Graph(name = 'polder', edges = edges, endnodes = endnodes, nodes = nodes)
+    run_polder(polder, end_node1, 45, print_each_iter=True)
+
+# test_EndEdge_sloot()
