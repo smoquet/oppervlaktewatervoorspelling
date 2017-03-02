@@ -10,7 +10,6 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
     initPath = [start_node]
     q.append(initPath)
     order_of_bfs_iteration = []
-#     endnodes_unknown_flow = []
     while len(q) != 0:
         tmpPath = q.pop(0)
         lastNode = tmpPath[len(tmpPath) - 1]
@@ -20,14 +19,10 @@ def get_BFS_iteration_sequence_of_nodes(start_node):
                 newPath = tmpPath + [linkNode]
                 q.append(newPath)
                 latest_node = newPath[-1]
-#                 if type(latest_node) == EndNodeWithUnknownFlow:
-#                     if latest_node not in endnodes_unknown_flow: 
-#                         endnodes_unknown_flow.append(latest_node)
                 if type(latest_node) == Node or type(latest_node) == Weir: 
                     if latest_node not in order_of_bfs_iteration:
                         order_of_bfs_iteration.append(latest_node)
     return order_of_bfs_iteration
-#     return order_of_bfs_iteration+endnodes_unknown_flow
 
 class Edge(object):
     '''represents an object in the stroomgebied
@@ -439,7 +434,7 @@ def test_polder_2gemaal_4sloot():
     add_graph_to_nodes(nodes, polder)
     run_polder(polder, end_node1, 300, print_each_iter=True)
 
-test_polder_2gemaal_4sloot()
+# test_polder_2gemaal_4sloot()
 
 def test_polder_1gemaal_2sloot_water_drempel_check():
     e1 = Edge(name = '1', water_volume= 800.0 )

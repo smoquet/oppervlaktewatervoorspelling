@@ -1,46 +1,6 @@
 def edge_water_level_is_lower(edge, water_level):
     return edge.get_water_level() < water_level
 
-# def displace_water_between_edges(node):
-#     '''expects: edges that are connected with each other
-#     1: get average_water_level from edges
-#     2: set slopes of edges according to this average height, their heights and lengths
-#     3: get Q from edges that are net givers of water, and subtract this amount from their water_volume
-#     4: give the Q to the net receiving edges on the ratio of their respective slopes (the most sloped ones get more)
-#     returns nothing 
-#     '''
-#     edges = node.get_edges()
-#     average_water_level = 0.0
-#     water_receiving_edges = []
-#     total_Q_to_give_to_receiving_edges = 0.0
-#     added_lower_water_levels = 0.0
-#     for edge in edges:
-#         edge_water_level = edge.get_water_level()
-#         average_water_level += edge_water_level        
-#     average_water_level /= len(edges)
-#     for edge in edges:
-#         slope = edge.calculate_set_and_return_slope_and_calculate_discharge(average_water_level)
-# #         edges_dict[edge].append(slope) 
-#         if slope == 0.0:
-#             water_receiving_edges.append([edge, 0])
-#         elif not edge_water_level_is_lower(edge, average_water_level): # giver of water
-#             edge.update_water_direction(node) 
-#             water_displacement_quantity = edge.get_discharge_Q()
-#             total_Q_to_give_to_receiving_edges +=water_displacement_quantity 
-#             edge.adjust_water_volume(-1*abs(water_displacement_quantity))
-#         elif edge_water_level_is_lower(edge, average_water_level): # receiver of water
-#             edge_water_level = edge.get_water_level()
-#             difference_in_water_level = average_water_level-edge_water_level
-#             added_lower_water_levels += difference_in_water_level
-#             water_receiving_edges.append([edge, difference_in_water_level])
-#         if total_Q_to_give_to_receiving_edges != 0.0:
-#             for receivers in water_receiving_edges:
-#                 edge = receivers[0]
-#                 difference_in_water_level = receivers[1]
-#                 ratio_of_total_Q_to_be_given_to_this_edge = difference_in_water_level/added_lower_water_levels
-#                 Q_to_give_to__this_receiving_edge = total_Q_to_give_to_receiving_edges*ratio_of_total_Q_to_be_given_to_this_edge
-#                 edge.adjust_water_volume(Q_to_give_to__this_receiving_edge)
-
 def get_average_water_level(edges):    
     total_water_level = 0.0
     for edge in edges:
@@ -48,7 +8,6 @@ def get_average_water_level(edges):
     return total_water_level / len(edges)
 
 #DEBUG STATEMT:# water_receiving_edges[0].get_nodes()[0].graph.get_total_water_in_system()
-
 def discharge_q_accordingly(discharge_Q_to_be_transferred,
                             average_water_level,
                             water_receiving_edges, 
@@ -121,24 +80,6 @@ def displace_water_between_edges(node):
                                 total_discharge_Q_of_receivers_of_water, 
                                 total_discharge_Q_of_givers_of_water 
                                 )
-#         for receiver in water_receiving_edges:
-#             discharge_ratio = receiver.get_discharge_Q()/total_discharge_Q_of_receivers_of_water
-#             Q_to_give_to_this_receiving_edge = discharge_Q_to_be_transferred*discharge_ratio
-#             receiver.adjust_water_volume(Q_to_give_to_this_receiving_edge)
-#             if receiver.get_water_level() > average_water_level:  # water is overloading, this will create endless oscillation
-#                 temp_Q_overload = receiver.calculate_surplus_Q(average_water_level)  # get amount of surplus Q
-#                 if Q_overload < temp_Q_overload:
-#                     Q_overload = temp_Q_overload  # keep track of largest surplus Q
-#         if Q_overload == 0.0:  # no overload
-#             for giver in water_giving_edges:
-#                 discharge_ratio = giver.get_discharge_Q()/total_discharge_Q_of_givers_of_water
-#                 Q_to_be_reduced = -1* discharge_Q_to_be_transferred * discharge_ratio
-#                 giver.adjust_water_volume(Q_to_be_reduced)
-#         else:  # overload of Q 
-#             new_proposed_discharge = discharge_Q_to_be_transferred - Q_overload
-#             difference_between
-            
-    
     
 def weir_displace_water_between_edges(weir):
     ''' displaces water between two edges of the weir
